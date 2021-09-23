@@ -151,7 +151,7 @@ function ftqq_serverchan_comment_send($comment_id)
         return false;
     }
 
-    $text = "博客 [ " . get_bloginfo('name') . " ] 有新的留言%0a";
+    $text = "博客 [ " . get_bloginfo('name') . " ] 《".get_post($comment->comment_post_ID)->post_title."》有新的留言%0a";
     $desp = $comment->comment_author." ： ".$comment->comment_content .'%0a<a href="'.site_url()."/?page_id=".$comment->comment_post_ID."%23comment-".$comment_id.'">去博客查看</a>';
 
     $msg = $text . $desp;
