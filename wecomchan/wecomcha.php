@@ -9,14 +9,14 @@
  * that starts the plugin.
  *
  * @link              https://dpii.club/wecomchan-wordpress-notice
- * @since             1.0.2
+ * @since             2.0.0
  * @package           WeComchan_Wordpress_notice
  *
  * @wordpress-plugin
  * Plugin Name:       WeCom酱,WeComchan-企业微信WordPress博客评论微信通知
  * Plugin URI:        https://dpii.club/wecomchan-wordpress-notice
  * Description:       将WordPress通知推送到微信（目前支持直接调用企业微信API）感谢：方糖-easychen site：http://ftqq.com/
- * Version:           1.0.3
+ * Version:           2.0.0
  * Author:            DefiedParty
  * Author URI:        https://dpii.club/
  * Text Domain:       wecomchan-wordpress-notice
@@ -34,7 +34,7 @@ if (!defined('WPINC')) {
  * Start at version 1.0.0 and use SemVer - https://semver.org
  * Rename this for your plugin and update it as you release new versions.
  */
-define('Serverchan_VERSION', '1.0.2');
+define('WeComchan_VERSION', '2.0.0');
 
 
 function ftqq_serverchan_settings_init()
