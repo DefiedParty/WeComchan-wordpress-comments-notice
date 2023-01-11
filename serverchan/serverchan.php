@@ -13,10 +13,10 @@
  * @package           WeComchan_Wordpress_notice
  *
  * @wordpress-plugin
- * Plugin Name:       WeComchan通知
+ * Plugin Name:       WeCom酱,WeComchan-企业微信WordPress博客评论微信通知
  * Plugin URI:        https://dpii.club/wecomchan-wordpress-notice
- * Description:       将WordPress通知推送到微信（目前支持：WeComchan-GO云函数）感谢：方糖-easychen site：http://ftqq.com/
- * Version:           1.0.2
+ * Description:       将WordPress通知推送到微信（目前支持直接调用企业微信API）感谢：方糖-easychen site：http://ftqq.com/
+ * Version:           1.0.3
  * Author:            DefiedParty
  * Author URI:        https://dpii.club/
  * Text Domain:       wecomchan-wordpress-notice
@@ -45,7 +45,7 @@ function ftqq_serverchan_settings_init()
     // 在阅读页面上注册新分节
     add_settings_section(
         'ftqq_serverchan_settings_section',
-        'WeCom酱',
+        'WeCom酱,WeComchan-企业微信WordPress博客评论微信通知',
         'ftqq_serverchan_settings_section_cb',
         'discussion'
     );
@@ -59,17 +59,33 @@ function ftqq_serverchan_settings_init()
     );
 
     add_settings_field(
-        'ftqq_serverchan_settings_accesspath',
-        '访问路径',
-        'ftqq_serverchan_settings_accesspath_cb',
+        'ftqq_serverchan_settings_corpid',
+        '企业ID',
+        'ftqq_serverchan_settings_corpid_cb',
         'discussion',
         'ftqq_serverchan_settings_section'
     );
 
     add_settings_field(
-        'ftqq_serverchan_settings_sendkey',
-        'Sendkey',
-        'ftqq_serverchan_settings_sendkey_cb',
+        'ftqq_serverchan_settings_agentid',
+        '内部应用ID',
+        'ftqq_serverchan_settings_agentid_cb',
+        'discussion',
+        'ftqq_serverchan_settings_section'
+    );
+
+    add_settings_field(
+        'ftqq_serverchan_settings_appsecret',
+        '内部应用Secret',
+        'ftqq_serverchan_settings_appsecret_cb',
+        'discussion',
+        'ftqq_serverchan_settings_section'
+    );
+
+    add_settings_field(
+        'ftqq_serverchan_settings_touser',
+        '指定接收成员（填写ID，多个接收者用"|"分隔；填"@all"，则向该企业应用的全部成员发送）',
+        'ftqq_serverchan_settings_touser_cb',
         'discussion',
         'ftqq_serverchan_settings_section'
     );
@@ -85,7 +101,7 @@ function ftqq_serverchan_settings_init()
 
 function ftqq_serverchan_settings_section_cb()
 {
-    echo "<p>通过WeCom酱向微信发送通知</p>";
+    echo "<p>通过WeCom酱向企业微信发送通知</p>";
 }
 
 function ftqq_serverchan_settings_is_on_cb()
@@ -97,21 +113,39 @@ function ftqq_serverchan_settings_is_on_cb()
     echo $html;
 }
 
-function ftqq_serverchan_settings_accesspath_cb()
+function ftqq_serverchan_settings_corpid_cb()
 {
     $setting = get_option('ftqq_serverchan_settings');
     // 输出字段
 ?>
-    <input type="text" name="ftqq_serverchan_settings[accesspath]" value=<?php echo isset($setting['accesspath']) ? esc_attr($setting['accesspath']) : ''; ?>>
+    <input type="text" name="ftqq_serverchan_settings[corpid]" value=<?php echo isset($setting['corpid']) ? esc_attr($setting['corpid']) : ''; ?>>
 <?php
 }
 
-function ftqq_serverchan_settings_sendkey_cb()
+function ftqq_serverchan_settings_agentid_cb()
 {
     $setting = get_option('ftqq_serverchan_settings');
     // 输出字段
 ?>
-    <input type="text" name="ftqq_serverchan_settings[sendkey]" value=<?php echo isset($setting['sendkey']) ? esc_attr($setting['sendkey']) : ''; ?>>
+    <input type="text" name="ftqq_serverchan_settings[agentid]" value=<?php echo isset($setting['agentid']) ? esc_attr($setting['agentid']) : ''; ?>>
+<?php
+}
+
+function ftqq_serverchan_settings_appsecret_cb()
+{
+    $setting = get_option('ftqq_serverchan_settings');
+    // 输出字段
+?>
+    <input type="text" name="ftqq_serverchan_settings[appsecret]" value=<?php echo isset($setting['appsecret']) ? esc_attr($setting['appsecret']) : ''; ?>>
+<?php
+}
+
+function ftqq_serverchan_settings_touser_cb()
+{
+    $setting = get_option('ftqq_serverchan_settings');
+    // 输出字段
+?>
+    <input type="text" name="ftqq_serverchan_settings[touser]" value=<?php echo isset($setting['touser']) ? esc_attr($setting['touser']) : ''; ?>>
 <?php
 }
 
@@ -137,10 +171,16 @@ function ftqq_serverchan_comment_send($comment_id)
     if (intval(@$setting['is_on']) != 1) {
         return false;
     }
-    if (!isset($setting['sendkey'])) {
+    if (!isset($setting['corpid'])) {
         return false;
     }
-    if (!isset($setting['accesspath'])) {
+    if (!isset($setting['agentid'])) {
+        return false;
+    }
+    if (!isset($setting['appsecret'])) {
+        return false;
+    }
+    if (!isset($setting['touser'])) {
         return false;
     }
 
@@ -151,11 +191,27 @@ function ftqq_serverchan_comment_send($comment_id)
         return false;
     }
 
-    $text = "博客 [ " . get_bloginfo('name') . " ] 《".get_post($comment->comment_post_ID)->post_title."》有新的留言%0a";
-    $desp = $comment->comment_author." ： ".$comment->comment_content .'%0a<a href="'.site_url()."/?page_id=".$comment->comment_post_ID."%23comment-".$comment_id.'">去博客查看</a>';
+    $text = "博客 [ " . get_bloginfo('name') . " ] 《".get_post($comment->comment_post_ID)->post_title."》有新的留言\n";
+    $desp = $comment->comment_author.' ：' . addslashes($comment->comment_content) . "\n" . '<a href=\"'.site_url()."/?page_id=".$comment->comment_post_ID."#comment-".$comment_id.'\">去博客查看</a>';
 
     $msg = $text . $desp;
-    return $result = file_get_contents($setting['accesspath'] . '?sendkey=' . $setting['sendkey'] . '&msg_type=text&msg=' . $msg);
+    $postbody = '{"msgtype":"text","touser":"' . $setting["touser"]. '","agentid":' . $setting['agentid'] . ',"text":{"content":"' . $msg . '"}}';
+    $acc_tok = json_decode((string)file_get_contents('https://qyapi.weixin.qq.com/cgi-bin/gettoken?corpid=' . $setting['corpid'] .'&corpsecret=' . $setting['appsecret']),true)['access_token'];
+    $buildpost = stream_context_create(array(  
 
+        'http' => array(  
+    
+          'method' => 'POST',  
+    
+          'header' => 'Content-type:application/json',
+      
+          'content' => $postbody,  
+    
+          'timeout' => 20  
+    
+        )  
+    
+    ));  
+    return $result = file_get_contents("https://qyapi.weixin.qq.com/cgi-bin/message/send?access_token=" . $acc_tok, false, $buildpost);
 }
 add_action('comment_post', 'ftqq_serverchan_comment_send', 19, 2);
